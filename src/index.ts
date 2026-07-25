@@ -43,6 +43,19 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root Landing Endpoint
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'online',
+    message: 'CogniCraft AI API Server is running live on Vercel.',
+    endpoints: {
+      health: '/api/health',
+      courses: '/api/courses',
+      ai: '/api/ai',
+    },
+  });
+});
+
 // Health Check Endpoint
 app.get('/api/health', (_req, res) => {
   res.json({
