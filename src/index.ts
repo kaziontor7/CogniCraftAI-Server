@@ -32,13 +32,24 @@ app.use(async (_req, _res, next) => {
   next();
 });
 
-// Middleware
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || true,
-    credentials: true,
-  })
-);
+// Dynamic Universal CORS Middleware (Fixes Vercel trailing slash mismatch & preflights)
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  if (requestOrigin) {
+    const cleanOrigin = requestOrigin.replace(/\/$/, '');
+    res.setHeader('Access-Control-Allow-Origin', cleanOrigin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
