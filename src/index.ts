@@ -12,10 +12,30 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/cognicraft_ai';
 
+// Cached MongoDB Connection for Vercel Serverless Environments
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) return;
+  try {
+    const db = await mongoose.connect(MONGODB_URI);
+    isConnected = db.connections[0].readyState === 1;
+    console.log('MongoDB Connected successfully!');
+  } catch (error) {
+    console.error('MongoDB Connection Error:', error);
+  }
+};
+
+// Middleware to ensure DB connection on serverless requests
+app.use(async (_req, _res, next) => {
+  await connectDB();
+  next();
+});
+
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: process.env.CLIENT_URL || true,
     credentials: true,
   })
 );
@@ -28,7 +48,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
-    service: 'CogniCraft AI API',
+    service: 'CogniCraft AI API Server (Vercel Ready)',
   });
 });
 
@@ -45,28 +65,11 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-// Connect to Database & Start Server
-const startServer = async () => {
-  try {
-    console.log('Connecting to MongoDB...');
-    await mongoose.connect(MONGODB_URI);
-    console.log('MongoDB Connected successfully!');
+// Local Development listener
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 CogniCraft AI Server running on http://localhost:${PORT}`);
+  });
+}
 
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 CogniCraft AI Server running on http://localhost:${PORT}`);
-    });
-
-    server.on('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use by another process.`);
-      } else {
-        console.error('Server error:', err);
-      }
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
-
-startServer();
+export default app;
